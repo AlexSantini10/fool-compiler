@@ -1,0 +1,79 @@
+name: simulate-prof-test
+
+on:
+    push:
+        branches: [ "main" ]
+    workflow_dispatch: {}
+
+jobs:
+    test-on-baseline:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout baseline (tag)
+              uses: actions/checkout@v4
+              with:
+                  ref: baseline-ci-prof-test
+                  fetch-depth: 0
+
+            - name: Fetch triggering commit from main
+              run: |
+                  set -euo pipefail
+                  git remote add student "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+                  git fetch --no-tags --depth=1 student "${GITHUB_SHA}"
+
+            - name: Overlay only the 7 allowed files
+              run: |
+                  set -euo pipefail
+                  files=(
+                      "compiler/AST.java"
+                      "compiler/ASTGenerationSTVisitor.java"
+                      "compiler/CodeGenerationASTVisitor.java"
+                      "compiler/PrintEASTVisitor.java"
+                      "compiler/SymbolTableASTVisitor.java"
+                      "compiler/TypeCheckEASTVisitor.java"
+                      "compiler/TypeRels.java"
+                  )
+
+                  for f in "${files[@]}"; do
+                      if ! git cat-file -e "${GITHUB_SHA}:$f"; then
+                          echo "Missing file in triggering commit: $f"
+                          exit 1
+                      fi
+                      mkdir -p "$(dirname "$f")"
+                      git show "${GITHUB_SHA}:$f" > "$f"
+                  done
+
+            - name: Setup JDK
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "17"
+
+            - name: Compile all Java sources (with ANTLR jar)
+              run: |
+                  set -euo pipefail
+                  test -f "lib/antlr-4.13.1-complete.jar"
+                  mkdir -p out
+                  find . -name "*.java" > sources.txt
+                  echo "Java sources found: $(wc -l < sources.txt)"
+                  javac -encoding UTF-8 -cp "lib/antlr-4.13.1-complete.jar" -d out @sources.txt
+
+            - name: Run compiler.Test, show output and verify last line is 50000
+              run: |
+                  set -euo pipefail
+                  test -f "prova.fool"
+
+                  echo "===== RUNNING compiler.Test ====="
+                  java -cp "out:lib/antlr-4.13.1-complete.jar" compiler.Test | tee program_output.txt
+                  echo "===== END PROGRAM OUTPUT ====="
+
+                  last_line=$(tail -n 1 program_output.txt | tr -d '\r' | xargs)
+                  echo "Detected last line: '$last_line'"
+
+                  if [ "$last_line" != "50000" ]; then
+                      echo "ERROR: Expected final result 50000"
+                      exit 1
+                  fi
+
+                  echo "Result check passed."
