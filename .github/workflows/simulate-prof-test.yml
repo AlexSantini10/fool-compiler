@@ -10,10 +10,10 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - name: Checkout baseline (tag)
+            - name: Checkout baseline (branch)
               uses: actions/checkout@v4
               with:
-                  ref: baseline-ci-prof-test
+                  ref: ci-prof-test
                   fetch-depth: 0
 
             - name: Fetch triggering commit from main
