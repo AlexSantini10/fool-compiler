@@ -5,11 +5,28 @@ import java.util.stream.Collectors;
 
 import compiler.lib.*;
 
+/**
+ * AST del linguaggio FOOL.
+ *
+ * Rappresenta la struttura sintattica astratta del programma.
+ * Tutte le fasi del compilatore (symbol table, type checking,
+ * code generation) lavorano visitando questi nodi.
+ *
+ * Le liste sono rese immutabili per evitare modifiche
+ * accidentali alla struttura dell'albero.
+ */
 public class AST {
 
+    /**
+     * Programma con dichiarazioni globali.
+     * Forma: let decList in exp
+     */
     public static class ProgLetInNode extends Node {
 
+        // Dichiarazioni globali visibili nell'espressione finale
         final List<DecNode> decList;
+
+        // Espressione principale del programma
         final Node exp;
 
         ProgLetInNode(List<DecNode> decs, Node exp) {
@@ -23,6 +40,9 @@ public class AST {
         }
     }
 
+    /**
+     * Programma composto da una sola espressione.
+     */
     public static class ProgNode extends Node {
 
         final Node exp;
@@ -37,12 +57,24 @@ public class AST {
         }
     }
 
+    /**
+     * Dichiarazione di funzione.
+     */
     public static class FunNode extends DecNode {
 
+        // Nome funzione
         final String id;
+
+        // Tipo di ritorno
         final TypeNode retType;
+
+        // Parametri formali
         final List<ParNode> parList;
+
+        // Dichiarazioni locali nel corpo
         final List<DecNode> decList;
+
+        // Corpo della funzione
         final Node exp;
 
         FunNode(String id, TypeNode retType, List<ParNode> pars, List<DecNode> decs, Node exp) {
@@ -59,6 +91,9 @@ public class AST {
         }
     }
 
+    /**
+     * Parametro formale di funzione o metodo.
+     */
     public static class ParNode extends DecNode {
 
         final String id;
@@ -74,9 +109,14 @@ public class AST {
         }
     }
 
+    /**
+     * Dichiarazione di variabile.
+     */
     public static class VarNode extends DecNode {
 
         final String id;
+
+        // Espressione di inizializzazione
         final Node exp;
 
         VarNode(String id, TypeNode type, Node exp) {
@@ -91,13 +131,27 @@ public class AST {
         }
     }
 
+    /**
+     * Dichiarazione di classe.
+     */
     public static class ClassNode extends DecNode {
 
+        // Nome classe
         final String id;
+
+        // Nome superclasse (null se assente)
         final String superID;
+
+        // Campi dichiarati
         final List<FieldNode> fields;
+
+        // Metodi dichiarati
         final List<MethodNode> methods;
+
+        // Entry della superclasse nella symbol table
         STentry superEntry;
+
+        // Tipo completo della classe (campi + metodi anche ereditati)
         ClassTypeNode type;
 
         public ClassNode(String id, String superID, List<FieldNode> fields, List<MethodNode> methods) {
@@ -113,9 +167,14 @@ public class AST {
         }
     }
 
+    /**
+     * Campo di una classe.
+     */
     public static class FieldNode extends DecNode {
 
         final String id;
+
+        // Offset nel layout dell'oggetto in heap
         int offset;
 
         FieldNode(String id, TypeNode type) {
@@ -129,6 +188,9 @@ public class AST {
         }
     }
 
+    /**
+     * Metodo di una classe.
+     */
     public static class MethodNode extends DecNode {
 
         final String id;
@@ -136,7 +198,11 @@ public class AST {
         final List<ParNode> parList;
         final List<DecNode> decList;
         final Node exp;
+
+        // Offset nella dispatch table
         int offset;
+
+        // Label usata in generazione di codice
         String label;
 
         MethodNode(String id, TypeNode retType, List<ParNode> parList, List<DecNode> decList, Node exp) {
@@ -145,6 +211,8 @@ public class AST {
             this.parList = Collections.unmodifiableList(parList);
             this.decList = Collections.unmodifiableList(decList);
             this.exp = exp;
+
+            // Un metodo è trattato come funzione (ArrowType)
             this.type = new ArrowTypeNode(
                     this.parList.stream().map(ParNode::getType).collect(Collectors.toList()),
                     this.retType
@@ -157,6 +225,9 @@ public class AST {
         }
     }
 
+    /**
+     * Nodo print.
+     */
     public static class PrintNode extends Node {
 
         final Node exp;
@@ -171,6 +242,9 @@ public class AST {
         }
     }
 
+    /**
+     * Nodo if-then-else.
+     */
     public static class IfNode extends Node {
 
         final Node cond;
@@ -189,6 +263,9 @@ public class AST {
         }
     }
 
+    /**
+     * Nodo di uguaglianza.
+     */
     public static class EqualNode extends Node {
 
         final Node l;
@@ -205,6 +282,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore booleano OR.
+     */
     public static class OrNode extends Node {
 
         final Node l;
@@ -221,6 +301,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore booleano AND.
+     */
     public static class AndNode extends Node {
 
         final Node l;
@@ -237,6 +320,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore booleano NOT.
+     */
     public static class NotNode extends Node {
 
         final Node exp;
@@ -251,6 +337,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore >=.
+     */
     public static class GreaterEqualNode extends Node {
 
         final Node l;
@@ -267,6 +356,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore <=.
+     */
     public static class LessEqualNode extends Node {
 
         final Node l;
@@ -283,6 +375,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore moltiplicazione.
+     */
     public static class TimesNode extends Node {
 
         final Node l;
@@ -299,6 +394,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore divisione.
+     */
     public static class DivNode extends Node {
 
         final Node l;
@@ -315,6 +413,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore somma.
+     */
     public static class PlusNode extends Node {
 
         final Node l;
@@ -331,6 +432,9 @@ public class AST {
         }
     }
 
+    /**
+     * Operatore sottrazione.
+     */
     public static class MinusNode extends Node {
 
         final Node l;
@@ -347,11 +451,18 @@ public class AST {
         }
     }
 
+    /**
+     * Chiamata a funzione.
+     */
     public static class CallNode extends Node {
 
         final String id;
         final List<Node> argList;
+
+        // Entry nella symbol table
         STentry entry;
+
+        // Nesting level del punto di chiamata
         int nl;
 
         CallNode(String id, List<Node> arguments) {
@@ -365,14 +476,22 @@ public class AST {
         }
     }
 
+    /**
+     * Chiamata a metodo: obj.meth(...)
+     */
     public static class ClassCallNode extends Node {
 
         final String objId;
         final String methId;
 
         int nl;
+
+        // Entry dell'oggetto
         STentry entry;
+
+        // Entry del metodo nella class table
         STentry methodEntry;
+
         final List<Node> argList;
 
         public ClassCallNode(String objId, String methId, List<Node> arguments) {
@@ -387,10 +506,17 @@ public class AST {
         }
     }
 
+    /**
+     * Uso di identificatore.
+     */
     public static class IdNode extends Node {
 
         final String id;
+
+        // Entry nella symbol table
         STentry entry;
+
+        // Nesting level
         int nl;
 
         IdNode(String id) {
@@ -403,6 +529,9 @@ public class AST {
         }
     }
 
+    /**
+     * Tipo riferimento a classe.
+     */
     public static class RefTypeNode extends TypeNode {
 
         final String id;
@@ -417,10 +546,17 @@ public class AST {
         }
     }
 
+    /**
+     * Creazione oggetto: new Class(...)
+     */
     public static class NewNode extends Node {
 
+        // Entry della classe
         STentry entry;
+
         final String id;
+
+        // Argomenti costruttore
         List<Node> argList;
 
         NewNode(String id, List<Node> arguments) {
@@ -434,6 +570,9 @@ public class AST {
         }
     }
 
+    /**
+     * Costante booleana.
+     */
     public static class BoolNode extends Node {
 
         final Boolean val;
@@ -448,6 +587,9 @@ public class AST {
         }
     }
 
+    /**
+     * Costante intera.
+     */
     public static class IntNode extends Node {
 
         final Integer val;
@@ -462,6 +604,9 @@ public class AST {
         }
     }
 
+    /**
+     * Tipo funzione: (parList) -> retType
+     */
     public static class ArrowTypeNode extends TypeNode {
 
         final List<TypeNode> parList;
@@ -478,6 +623,9 @@ public class AST {
         }
     }
 
+    /**
+     * Tipo booleano.
+     */
     public static class BoolTypeNode extends TypeNode {
 
         @Override
@@ -486,6 +634,9 @@ public class AST {
         }
     }
 
+    /**
+     * Tipo intero.
+     */
     public static class IntTypeNode extends TypeNode {
 
         @Override
@@ -494,6 +645,12 @@ public class AST {
         }
     }
 
+    /**
+     * Tipo classe completo.
+     *
+     * allFields: lista completa dei campi (anche ereditati)
+     * allMethods: lista completa dei metodi (anche ereditati)
+     */
     public static class ClassTypeNode extends TypeNode {
 
         final List<TypeNode> allFields;
@@ -510,6 +667,9 @@ public class AST {
         }
     }
 
+    /**
+     * Nodo vuoto (usato in casi particolari dell'AST).
+     */
     public static class EmptyNode extends Node {
 
         @Override
@@ -518,6 +678,9 @@ public class AST {
         }
     }
 
+    /**
+     * Tipo vuoto (usato in casi particolari del type system).
+     */
     public static class EmptyTypeNode extends TypeNode {
 
         @Override
