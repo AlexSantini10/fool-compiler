@@ -132,7 +132,8 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
         if (n.superID != null) {
             Map<String, STentry> superVT = classTable.get(n.superID);
             if (superVT == null) {
-                System.out.println("Extending class id " + n.superID + " at line " + n.getLine() + " not declared");
+                System.out.println("Extending class id " + n.superID + " at line "
+                        + n.getLine() + " not declared");
                 stErrors++;
             } else {
                 STentry superEntry = globalST.get(n.superID);
@@ -150,7 +151,8 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
         n.type = ct;
 
         if (globalST.put(n.id, classEntry) != null) {
-            System.out.println("Class id " + n.id + " at line " + n.getLine() + " already declared");
+            System.out.println("Class id " + n.id + " at line " + n.getLine()
+                    + " already declared");
             stErrors++;
         }
 
@@ -174,8 +176,10 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
 
         for (FieldNode f : n.fields) {
             if (seenInClass.contains(f.id)) {
-                System.out.println("Field id " + f.id + " at line " + f.getLine() + " already declared in class");
+                System.out.println("Field or method id " + f.id + " at line "
+                        + f.getLine() + " already declared in class " + n.id);
                 stErrors++;
+                continue;
             }
             seenInClass.add(f.id);
 
@@ -204,8 +208,10 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
 
         for (MethodNode m : n.methods) {
             if (seenInClass.contains(m.id)) {
-                System.out.println("Method id " + m.id + " at line " + m.getLine() + " already declared in class");
+                System.out.println("Field or method id " + m.id + " at line "
+                        + m.getLine() + " already declared in class " + n.id);
                 stErrors++;
+                continue;
             }
             seenInClass.add(m.id);
 
