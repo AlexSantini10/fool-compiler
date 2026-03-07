@@ -28,6 +28,22 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
         return entry;
     }
 
+    private void checkTypeExists(TypeNode type, int line) {
+        if (!(type instanceof RefTypeNode refType)) {
+            return;
+        }
+
+        if (symTable.isEmpty()) {
+            return;
+        }
+
+        STentry entry = symTable.get(0).get(refType.id);
+        if (entry == null || !(entry.type instanceof ClassTypeNode)) {
+            System.out.println("Class type " + refType.id + " at line " + line + " not declared");
+            stErrors++;
+        }
+    }
+
     SymbolTableASTVisitor() {}
 
     SymbolTableASTVisitor(boolean debug) {
@@ -61,10 +77,13 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
     public Void visitNode(FunNode n) {
         if (print) printNode(n);
 
+        checkTypeExists(n.retType, n.getLine());
+
         Map<String, STentry> scopeTable = symTable.get(nestingLevel);
 
         List<TypeNode> parTypes = new ArrayList<>();
         for (ParNode par : n.parList) {
+            checkTypeExists(par.getType(), par.getLine());
             parTypes.add(par.getType());
         }
 
@@ -109,6 +128,7 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
     public Void visitNode(VarNode n) {
         if (print) printNode(n);
 
+        checkTypeExists(n.getType(), n.getLine());
         visit(n.exp);
 
         Map<String, STentry> scopeTable = symTable.get(nestingLevel);
@@ -175,6 +195,8 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
         Set<String> seenInClass = new HashSet<>();
 
         for (FieldNode f : n.fields) {
+            checkTypeExists(f.getType(), f.getLine());
+
             if (seenInClass.contains(f.id)) {
                 System.out.println("Field or method id " + f.id + " at line "
                         + f.getLine() + " already declared in class " + n.id);
@@ -240,7 +262,6 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
     @Override
     public Void visitNode(FieldNode n) {
         if (print) printNode(n, n.id);
-        // handled in visitNode(ClassNode)
         return null;
     }
 
@@ -248,10 +269,13 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
     public Void visitNode(MethodNode n) {
         if (print) printNode(n, n.id);
 
+        checkTypeExists(n.retType, n.getLine());
+
         Map<String, STentry> vt = symTable.get(nestingLevel);
 
         List<TypeNode> parTypes = new ArrayList<>();
         for (ParNode p : n.parList) {
+            checkTypeExists(p.getType(), p.getLine());
             parTypes.add(p.getType());
         }
         ArrowTypeNode mType = new ArrowTypeNode(parTypes, n.retType);
@@ -319,11 +343,7 @@ public class SymbolTableASTVisitor extends BaseASTVisitor<Void, VoidException> {
     @Override
     public Void visitNode(RefTypeNode n) {
         if (print) printNode(n, n.id);
-
-        if (!classTable.containsKey(n.id)) {
-            System.out.println("Class with id " + n.id + " at line " + n.getLine() + " not declared");
-            stErrors++;
-        }
+        checkTypeExists(n, n.getLine());
         return null;
     }
 
