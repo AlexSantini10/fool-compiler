@@ -12,39 +12,23 @@ import compiler.lib.*;
 
 import static compiler.lib.FOOLlib.*;
 
-/**
- * Visitor ANTLR che costruisce l'AST a partire dal parse tree.
- *
- * Riduce il parse tree (molto verboso) in un AST più compato e assegna la riga
- * sorgente ai nodi (setLine) per errori più chiari nelle fasi successive.
- */
+// Visitor ANTLR che trasforma il parse tree in AST.
 public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
 
-    /**
-     * Indentazione usata solo in debug per stampare l'albero di visita.
-     */
+    // Indentazione usata solo per debug di visita
     String indent;
 
-    /**
-     * Flag debug: se true stampa quali produzioni/contesti stiamo visitando.
-     */
+    // Se true stampa i contesti ANTLR visitati
     public boolean print;
 
     ASTGenerationSTVisitor() {}
 
-    /**
-     * @param debug se true abilita la stampa dei contesti visitati.
-     */
     ASTGenerationSTVisitor(boolean debug) {
         print = debug;
     }
 
-    /**
-     * Stampa il nome del contesto ANTLR corrente, con un prefisso che evidenzia
-     * quando siamo dentro una produzione "specializzata" (alternative etichettate).
-     *
-     * Serve solo per debug di grammatica/visitor.
-     */
+    // Stampa il nome del contesto corrente.
+    // Se il contesto è un'alternativa etichettata, stampa anche la produzione padre.
     private void printVarAndProdName(ParserRuleContext ctx) {
         String prefix = "";
         Class<?> ctxClass = ctx.getClass(), parentClass = ctxClass.getSuperclass();
@@ -54,20 +38,16 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         System.out.println(indent + prefix + lowerizeFirstChar(extractCtxName(ctxClass.getName())));
     }
 
-    /**
-     * Override generico di visit:
-     * - gestisce t == null in modo safe
-     * - aggiorna indent per la stampa gerarchica (debug)
-     */
+    // Override centrale della visita.
+    // super.visit(t) fa poi t.accept(this), che porta al visitXXX corretto
+    // in base al tipo dinamico reale del nodo del parse tree.
     @Override
     public Node visit(ParseTree t) {
         if (t == null) {
             return null;
         }
 
-        // NB: qui passano tutte le chiamate visit(c.qualcosa()).
-        // super.visit(t) fa t.accept(this) e il contesto concreto richiama visitXXX(...)
-        // in base al tipo dinamico (PlusMinusContext, CallContext, ...).
+        // Qui gestiamo solo il debug gerarchico, non la logica di parsing.
         String temp = indent;
         indent = (indent == null) ? "" : indent + "  ";
         Node result = super.visit(t);
@@ -75,48 +55,39 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return result;
     }
 
-    /**
-     * Root del parsing: delega al corpo del programma (progbody).
-     */
+    // Root del parsing: il vero programma sta dentro progbody
     @Override
     public Node visitProg(ProgContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Delega al nodo reale del programma: let-in oppure solo exp.
         return visit(c.progbody());
     }
 
-    /**
-     * Programma "let-in": costruisce ProgLetInNode.
-     */
+    // Programma della forma let dec* in exp
     @Override
     public Node visitLetInProg(LetInProgContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Creazione lista dichiarazioni globali del let.
+        // L'ordine delle dichiarazioni viene mantenuto.
+        // Prima classi, poi dichiarazioni normali.
         List<DecNode> declist = new ArrayList<>();
 
-        // Prima le class declarations.
         for (var classDec : c.cldec()) {
             declist.add((DecNode) visit(classDec));
         }
 
-        // Poi dichiarazioni di variabili/funzioni.
         for (DecContext dec : c.dec()) {
             declist.add((DecNode) visit(dec));
         }
 
-        // Espressione finale dopo il let.
         return new ProgLetInNode(declist, visit(c.exp()));
     }
 
-    /**
-     * Programma senza dichiarazioni: ProgNode(exp).
-     */
+    // Programma composto da una sola espressione
     @Override
     public Node visitNoDecProg(NoDecProgContext c) {
         if (print) {
@@ -126,31 +97,32 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return new ProgNode(visit(c.exp()));
     }
 
-    /**
-     * Dichiarazione di classe.
-     */
+    // Dichiarazione di classe
     @Override
     public Node visitCldec(CldecContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // ID(0): nome classe.
+        // ID(0) è sempre il nome della classe.
         String classID = c.ID(0).getText();
 
-        // Se presente, ID(1): superclasse.
+        // Se c'è extends, ID(1) è la superclasse.
         String superID = null;
         if (c.EXTENDS() != null) {
             superID = c.ID(1).getText();
         }
 
-        // Creazione lista campi.
         List<FieldNode> fields = new ArrayList<>();
 
-        // NB: se c'è EXTENDS, gli ID dei campi partono dopo anche la superclasse.
+        // Se c'è extends, la lista degli ID è:
+        // ID(0)=classe, ID(1)=superclasse, poi partono i campi.
+        // Altrimenti i campi partono subito da ID(1).
         int extendingPad = c.EXTENDS() != null ? 1 : 0;
 
-        // Creazione nodi Field allineando ID dei campi con i type(...) corrispondenti.
+        // Allineamento delicato:
+        // gli ID dei campi partono dopo nome classe ed eventuale superclasse,
+        // mentre i type(...) contengono solo i tipi dei campi.
         IntStream.range(1 + extendingPad, c.ID().size()).forEach(i -> {
             var field = new FieldNode(
                     c.ID(i).getText(),
@@ -160,32 +132,29 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
             fields.add(field);
         });
 
-        // Creazione lista metodi.
         List<MethodNode> methods = new ArrayList<>();
         for (var method : c.methdec()) {
             methods.add((MethodNode) visit(method));
         }
 
-        // Nodo classe completo + riga (puntiamo al nome classe).
         var n = new ClassNode(classID, superID, fields, methods);
         n.setLine(c.ID(0).getSymbol().getLine());
         return n;
     }
 
-    /**
-     * Dichiarazione di metodo.
-     */
+    // Dichiarazione di metodo
     @Override
     public Node visitMethdec(MethdecContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // ID(0): nome metodo, type(0): tipo di ritorno.
+        // Convenzione della grammatica:
+        // ID(0) è il nome metodo, type(0) è il tipo di ritorno.
         String methodId = c.ID(0).getText();
         TypeNode returnType = (TypeNode) visit(c.type(0));
 
-        // Creazione lista parametri: ID(1..n) con type(1..n).
+        // Da ID(1) e type(1) in poi abbiamo i parametri.
         List<ParNode> parameters = new ArrayList<>();
         IntStream.range(1, c.ID().size()).forEach(i -> {
             ParNode p = new ParNode(c.ID(i).getText(), (TypeNode) visit(c.type(i)));
@@ -193,50 +162,42 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
             parameters.add(p);
         });
 
-        // Creazione lista dichiarazioni locali nel corpo del metodo.
         List<DecNode> declarations = new ArrayList<>();
         for (var declaration : c.dec()) {
             declarations.add((DecNode) visit(declaration));
         }
 
-        // Corpo del metodo: exp().
         var n = new MethodNode(methodId, returnType, parameters, declarations, visit(c.exp()));
         n.setLine(c.ID(0).getSymbol().getLine());
         return n;
     }
 
-    /**
-     * Creazione oggetto: new ClassName(e1, e2, ...)
-     */
+    // Creazione oggetto: new ClassName(e1, e2, ...)
     @Override
     public Node visitNew(NewContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Creazione lista argomenti del costruttore.
         List<Node> argumentsList = new ArrayList<>();
         for (int i = 0; i < c.exp().size(); i++) {
             argumentsList.add(visit(c.exp(i)));
         }
 
-        // NB: qui salviamo solo nome classe e argomenti; il binding alla classe (STentry)
-        // verrà fatto in analisi semantica.
+        // Qui salviamo solo nome classe e argomenti.
+        // Il collegamento alla dichiarazione della classe avviene dopo.
         var n = new NewNode(c.ID().getText(), argumentsList);
         n.setLine(c.ID().getSymbol().getLine());
         return n;
     }
 
-    /**
-     * Moltiplicazione o divisione: e1 * e2 oppure e1 / e2
-     */
+    // e1 * e2 oppure e1 / e2
     @Override
     public Node visitTimesDiv(TimesDivContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Visita dei due operandi; scelta del nodo in base al token presente.
         Node n;
         if (c.TIMES() != null) {
             n = new TimesNode(visit(c.exp(0)), visit(c.exp(1)));
@@ -248,16 +209,13 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * And/Or booleani: e1 && e2 oppure e1 || e2
-     */
+    // e1 && e2 oppure e1 || e2
     @Override
     public Node visitAndOr(AndOrContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Visita dei due operandi; scelta del nodo in base al token presente.
         Node n;
         if (c.AND() != null) {
             n = new AndNode(visit(c.exp(0)), visit(c.exp(1)));
@@ -269,16 +227,13 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Somma o sottrazione: e1 + e2 oppure e1 - e2
-     */
+    // e1 + e2 oppure e1 - e2
     @Override
     public Node visitPlusMinus(PlusMinusContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Visita dei due operandi; scelta del nodo in base al token presente.
         Node n;
         if (c.PLUS() != null) {
             n = new PlusNode(visit(c.exp(0)), visit(c.exp(1)));
@@ -290,16 +245,14 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Confronti: ==, <=, >=
-     */
+    // e1 == e2, e1 <= e2, e1 >= e2
     @Override
     public Node visitComp(CompContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Visita dei due operandi; scelta del nodo in base al token presente.
+        // La grammatica garantisce che uno di questi token ci sia.
         Node n = null;
         if (c.EQ() != null) {
             n = new EqualNode(visit(c.exp(0)), visit(c.exp(1)));
@@ -314,9 +267,7 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Negazione booleana: !exp
-     */
+    // !exp
     @Override
     public Node visitNot(NotContext c) {
         if (print) {
@@ -328,16 +279,13 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Dichiarazione di variabile: var ID : type = exp
-     */
+    // var ID : type = exp
     @Override
     public Node visitVardec(VardecContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Creazione VarNode con tipo e inizializzazione.
         Node n = null;
         if (c.ID() != null) {
             n = new VarNode(c.ID().getText(), (TypeNode) visit(c.type()), visit(c.exp()));
@@ -346,16 +294,16 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Dichiarazione di funzione.
-     */
+    // Dichiarazione di funzione
     @Override
     public Node visitFundec(FundecContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Creazione lista parametri: ID(1..n) con type(1..n).
+        // Convenzione della grammatica:
+        // ID(0) nome funzione, type(0) tipo di ritorno,
+        // da 1 in poi parametri e tipi dei parametri.
         List<ParNode> parList = new ArrayList<>();
         for (int i = 1; i < c.ID().size(); i++) {
             ParNode p = new ParNode(c.ID(i).getText(), (TypeNode) visit(c.type(i)));
@@ -363,13 +311,11 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
             parList.add(p);
         }
 
-        // Creazione lista dichiarazioni locali della funzione.
         List<DecNode> decList = new ArrayList<>();
         for (DecContext dec : c.dec()) {
             decList.add((DecNode) visit(dec));
         }
 
-        // Creazione FunNode completo: nome, tipo ritorno, parametri, decl locali, corpo.
         Node n = null;
         if (c.ID().size() > 0) {
             n = new FunNode(
@@ -384,9 +330,7 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Tipo int.
-     */
+    // int
     @Override
     public Node visitIntType(IntTypeContext c) {
         if (print) {
@@ -395,9 +339,7 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return new IntTypeNode();
     }
 
-    /**
-     * Tipo bool.
-     */
+    // bool
     @Override
     public Node visitBoolType(BoolTypeContext c) {
         if (print) {
@@ -406,25 +348,21 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return new BoolTypeNode();
     }
 
-    /**
-     * Tipo riferimento a classe: ID.
-     */
+    // Tipo riferimento a classe: un ID che qui non viene ancora risolto
     @Override
     public Node visitIdType(IdTypeContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // NB: qui salviamo solo l'ID. La risoluzione a una dichiarazione di classe
-        // avviene dopo (symbol table / type checking).
+        // In AST salviamo solo il nome della classe.
+        // La verifica che esista davvero avviene in analisi semantica.
         var n = new RefTypeNode(c.ID().getText());
         n.setLine(c.ID().getSymbol().getLine());
         return n;
     }
 
-    /**
-     * null: rappresentato come EmptyNode.
-     */
+    // null
     @Override
     public Node visitNull(NullContext c) {
         if (print) {
@@ -433,22 +371,19 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return new EmptyNode();
     }
 
-    /**
-     * Costante intera (supporta anche meno unario).
-     */
+    // Costante intera, con supporto al meno unario
     @Override
     public Node visitInteger(IntegerContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
+        // Il meno unario viene già assorbito qui nel valore.
         int value = Integer.parseInt(c.NUM().getText());
         return new IntNode(c.MINUS() == null ? value : -value);
     }
 
-    /**
-     * true.
-     */
+    // true
     @Override
     public Node visitTrue(TrueContext c) {
         if (print) {
@@ -457,9 +392,7 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return new BoolNode(true);
     }
 
-    /**
-     * false.
-     */
+    // false
     @Override
     public Node visitFalse(FalseContext c) {
         if (print) {
@@ -468,16 +401,15 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return new BoolNode(false);
     }
 
-    /**
-     * If expression.
-     */
+    // if exp then exp else exp
     @Override
     public Node visitIf(IfContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // NB: per convenzione grammaticale exp(0)=cond, exp(1)=then, exp(2)=else.
+        // Posizioni fissate dalla grammatica:
+        // exp(0) condizione, exp(1) then, exp(2) else.
         Node ifNode = visit(c.exp(0));
         Node thenNode = visit(c.exp(1));
         Node elseNode = visit(c.exp(2));
@@ -487,9 +419,7 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Print expression: print(exp)
-     */
+    // print(exp)
     @Override
     public Node visitPrint(PrintContext c) {
         if (print) {
@@ -501,44 +431,39 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Parentesi: (exp)
-     */
+    // (exp)
     @Override
     public Node visitPars(ParsContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Le parentesi non servono nell'AST, quindi ritorniamo direttamente l'exp interna.
+        // Le parentesi servono solo nel parse tree.
+        // Nell'AST non aggiungono informazione strutturale.
         return visit(c.exp());
     }
 
-    /**
-     * Uso di identificatore come espressione: ID
-     */
+    // Uso di identificatore come espressione
     @Override
     public Node visitId(IdContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // NB: qui creiamo solo IdNode. Entry e nesting level si attaccano dopo.
+        // Qui creiamo solo il nodo sintattico.
+        // Entry e nesting level si attaccano dopo nella symbol table visit.
         Node n = new IdNode(c.ID().getText());
         n.setLine(c.ID().getSymbol().getLine());
         return n;
     }
 
-    /**
-     * Chiamata a funzione: ID(e1, e2, ...)
-     */
+    // Chiamata a funzione: ID(e1, e2, ...)
     @Override
     public Node visitCall(CallContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Creazione lista argomenti della chiamata.
         List<Node> arglist = new ArrayList<>();
         for (ExpContext arg : c.exp()) {
             arglist.add(visit(arg));
@@ -549,22 +474,20 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         return n;
     }
 
-    /**
-     * Chiamata a metodo: obj.meth(e1, e2, ...)
-     */
+    // Chiamata a metodo: obj.meth(e1, e2, ...)
     @Override
     public Node visitDotCall(DotCallContext c) {
         if (print) {
             printVarAndProdName(c);
         }
 
-        // Creazione lista argomenti della chiamata.
         List<Node> arglist = new ArrayList<>();
         for (ExpContext arg : c.exp()) {
             arglist.add(visit(arg));
         }
 
-        // ID(0): oggetto, ID(1): metodo.
+        // ID(0) è il ricevente, ID(1) è il metodo.
+        // La risoluzione del metodo nella gerarchia di classi avviene dopo.
         Node n = new ClassCallNode(c.ID(0).getText(), c.ID(1).getText(), arglist);
         n.setLine(c.ID(1).getSymbol().getLine());
         return n;
