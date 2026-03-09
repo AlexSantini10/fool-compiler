@@ -18,7 +18,6 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
     // Indentazione usata solo per debug di visita
     String indent;
 
-    // Se true stampa i contesti ANTLR visitati
     public boolean print;
 
     ASTGenerationSTVisitor() {}
@@ -26,6 +25,7 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
     ASTGenerationSTVisitor(boolean debug) {
         print = debug;
     }
+
 
     // Stampa il nome del contesto corrente.
     // Se il contesto è un'alternativa etichettata, stampa anche la produzione padre.
@@ -38,9 +38,9 @@ public class ASTGenerationSTVisitor extends FOOLBaseVisitor<Node> {
         System.out.println(indent + prefix + lowerizeFirstChar(extractCtxName(ctxClass.getName())));
     }
 
-    // Override centrale della visita.
-    // super.visit(t) fa poi t.accept(this), che porta al visitXXX corretto
-    // in base al tipo dinamico reale del nodo del parse tree.
+    /**
+     * Override generico di visit: aggiorna indent per la stampa gerarchica (debug)
+     */
     @Override
     public Node visit(ParseTree t) {
         if (t == null) {

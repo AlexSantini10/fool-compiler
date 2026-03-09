@@ -155,22 +155,37 @@ public class CodeGenerationASTVisitor extends BaseASTVisitor<String, VoidExcepti
         }
 
         // Gli argomenti vengono valutati da destra verso sinistra
-        // così nello stack risultano nell'ordine atteso dalla convenzione di chiamata
         String argumentsCode = null;
         for (int i = node.argList.size() - 1; i >= 0; i--) {
             argumentsCode = nlJoin(argumentsCode, visit(node.argList.get(i)));
         }
 
-        // Risalita statica fino al frame della funzione chiamata
+        // Risalita statica
         String getActivationRecordCode = null;
         for (int i = 0; i < node.nl - node.entry.nl; i++) {
             getActivationRecordCode = nlJoin(getActivationRecordCode, "lw");
         }
 
-        // Struttura comune della chiamata:
-        // - push del control link
-        // - push degli argomenti
-        // - calcolo dell'access link
+        // Caso 1: metodo chiamato implicitamente dentro un metodo
+        // Esempio: f() dentro il corpo di un metodo
+        if (node.entry.offset >= 0) {
+            return nlJoin(
+                    "lfp",                  // control link
+                    argumentsCode,          // argomenti attuali
+                    "lfp",
+                    getActivationRecordCode,// object pointer del receiver corrente
+                    "stm",                  // salva object pointer in tm
+                    "ltm",                  // object pointer come access link del metodo chiamato
+                    "ltm",                  // duplica object pointer
+                    "lw",                   // dispatch pointer
+                    "push " + node.entry.offset,
+                    "add",
+                    "lw",                   // indirizzo del metodo dalla dispatch table
+                    "js"
+            );
+        }
+
+        // Caso 2: funzione normale
         String commonCode = nlJoin(
                 "lfp",                  // control link
                 argumentsCode,          // argomenti attuali
@@ -181,8 +196,6 @@ public class CodeGenerationASTVisitor extends BaseASTVisitor<String, VoidExcepti
                 "ltm"                   // duplica access link: una copia servirà per l'indirizzo funzione
         );
 
-        // Dall'access link si raggiunge la cella che contiene la chiusura della funzione
-        // poi si legge l'indirizzo del codice e si salta
         return nlJoin(
                 commonCode,
                 "push " + node.entry.offset,

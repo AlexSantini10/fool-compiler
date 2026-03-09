@@ -13,10 +13,13 @@ public class AST {
     // Programma della forma: let decList in exp
     public static class ProgLetInNode extends Node {
 
-        // Dichiarazioni globali visibili nell'espressione finale
+        // Lista delle dichiarazioni globali del programma
+        // (variabili, funzioni o classi).
+        // Sono visibili nell'espressione finale exp.
         final List<DecNode> decList;
 
-        // Espressione principale del programma
+        // Espressione principale del programma.
+        // Il valore prodotto da questa espressione è il risultato del programma.
         final Node exp;
 
         ProgLetInNode(List<DecNode> decs, Node exp) {
@@ -33,6 +36,8 @@ public class AST {
     // Programma composto da una sola espressione
     public static class ProgNode extends Node {
 
+        // Espressione principale del programma
+        // (caso senza dichiarazioni globali).
         final Node exp;
 
         ProgNode(Node exp) {
@@ -48,19 +53,22 @@ public class AST {
     // Dichiarazione di funzione
     public static class FunNode extends DecNode {
 
-        // Nome funzione
+        // Nome della funzione
         final String id;
 
         // Tipo di ritorno dichiarato
         final TypeNode retType;
 
-        // Parametri formali in ordine
+        // Lista dei parametri formali della funzione
+        // nell'ordine in cui compaiono nella dichiarazione
         final List<ParNode> parList;
 
         // Dichiarazioni locali nel corpo della funzione
+        // (variabili o funzioni annidate)
         final List<DecNode> decList;
 
         // Corpo della funzione
+        // l'espressione che produce il valore di ritorno
         final Node exp;
 
         FunNode(String id, TypeNode retType, List<ParNode> pars, List<DecNode> decs, Node exp) {
@@ -80,8 +88,11 @@ public class AST {
     // Parametro formale di funzione o metodo
     public static class ParNode extends DecNode {
 
+        // Nome del parametro
         final String id;
 
+        // Il tipo del parametro è salvato nel campo "type"
+        // ereditato da DecNode
         ParNode(String id, TypeNode type) {
             this.id = id;
             this.type = type;
@@ -96,9 +107,11 @@ public class AST {
     // Dichiarazione di variabile
     public static class VarNode extends DecNode {
 
+        // Nome della variabile
         final String id;
 
         // Espressione usata per inizializzare la variabile
+        // viene valutata nel momento della dichiarazione
         final Node exp;
 
         VarNode(String id, TypeNode type, Node exp) {
@@ -119,19 +132,24 @@ public class AST {
         // Nome della classe
         final String id;
 
-        // Nome della superclasse, null se la classe non estende nulla
+        // Nome della superclasse
+        // null se la classe non estende nulla
         final String superID;
 
         // Campi dichiarati direttamente nella classe
+        // non include quelli ereditati
         final List<FieldNode> fields;
 
         // Metodi dichiarati direttamente nella classe
+        // non include quelli ereditati
         final List<MethodNode> methods;
 
-        // Entry della superclasse, valorizzata dalla symbol table visit
+        // Entry della superclasse nella Symbol Table
+        // risolta durante la visita di analisi semantica
         STentry superEntry;
 
-        // Tipo completo della classe, comprensivo dei membri ereditati
+        // Tipo completo della classe
+        // contiene tutti i campi e metodi (inclusi quelli ereditati)
         ClassTypeNode type;
 
         public ClassNode(String id, String superID, List<FieldNode> fields, List<MethodNode> methods) {
@@ -150,10 +168,15 @@ public class AST {
     // Campo di una classe
     public static class FieldNode extends DecNode {
 
+        // Nome del campo
         final String id;
 
-        // Offset del campo nel layout dell'oggetto
-        // Nei campi l'offset serve per sapere dove leggere/scrivere dentro l'oggetto
+        // Offset del campo nel layout dell'oggetto nello heap
+        // usato nella code generation per accedere al campo
+        // layout tipico:
+        // offset 0  -> dispatch pointer
+        // offset -1 -> primo campo
+        // offset -2 -> secondo campo
         int offset;
 
         FieldNode(String id, TypeNode type) {
@@ -170,17 +193,27 @@ public class AST {
     // Metodo di una classe
     public static class MethodNode extends DecNode {
 
+        // Nome del metodo
         final String id;
+
+        // Tipo di ritorno dichiarato
         final TypeNode retType;
+
+        // Parametri formali del metodo
         final List<ParNode> parList;
+
+        // Dichiarazioni locali nel corpo del metodo
         final List<DecNode> decList;
+
+        // Corpo del metodo
         final Node exp;
 
-        // Offset del metodo nella dispatch table della classe
-        // Se c'è overriding, l'offset deve restare quello ereditato
+        // Offset del metodo nella dispatch table
+        // usato per il dynamic dispatch
         int offset;
 
-        // Label del codice del metodo usata nella code generation
+        // Label del codice generato per il metodo
+        // usata nella code generation per saltare al metodo
         String label;
 
         MethodNode(String id, TypeNode retType, List<ParNode> parList, List<DecNode> decList, Node exp) {
@@ -190,8 +223,8 @@ public class AST {
             this.decList = Collections.unmodifiableList(decList);
             this.exp = exp;
 
-            // Un metodo viene trattato come una funzione:
-            // il suo tipo statico è un ArrowTypeNode(parametri -> ritorno)
+            // Un metodo è trattato come una funzione
+            // il suo tipo è (parametri -> ritorno)
             this.type = new ArrowTypeNode(
                     this.parList.stream().map(ParNode::getType).collect(Collectors.toList()),
                     this.retType
@@ -207,6 +240,7 @@ public class AST {
     // Nodo print
     public static class PrintNode extends Node {
 
+        // Espressione da stampare
         final Node exp;
 
         PrintNode(Node exp) {
@@ -222,8 +256,13 @@ public class AST {
     // Nodo if-then-else
     public static class IfNode extends Node {
 
+        // Condizione dell'if
         final Node cond;
+
+        // Espressione eseguita se la condizione è vera
         final Node th;
+
+        // Espressione eseguita se la condizione è falsa
         final Node el;
 
         IfNode(Node cond, Node th, Node el) {
@@ -241,7 +280,10 @@ public class AST {
     // Nodo di uguaglianza
     public static class EqualNode extends Node {
 
+        // Operando sinistro
         final Node l;
+
+        // Operando destro
         final Node r;
 
         EqualNode(Node l, Node r) {
@@ -255,10 +297,12 @@ public class AST {
         }
     }
 
-    // Operatore booleano OR
     public static class OrNode extends Node {
 
+        // Operando sinistro
         final Node l;
+
+        // Operando destro
         final Node r;
 
         OrNode(Node l, Node r) {
@@ -272,7 +316,6 @@ public class AST {
         }
     }
 
-    // Operatore booleano AND
     public static class AndNode extends Node {
 
         final Node l;
@@ -289,9 +332,9 @@ public class AST {
         }
     }
 
-    // Operatore booleano NOT
     public static class NotNode extends Node {
 
+        // Espressione negata
         final Node exp;
 
         NotNode(Node exp) {
@@ -304,7 +347,6 @@ public class AST {
         }
     }
 
-    // Operatore >=
     public static class GreaterEqualNode extends Node {
 
         final Node l;
@@ -321,7 +363,6 @@ public class AST {
         }
     }
 
-    // Operatore <=
     public static class LessEqualNode extends Node {
 
         final Node l;
@@ -338,7 +379,6 @@ public class AST {
         }
     }
 
-    // Operatore moltiplicazione
     public static class TimesNode extends Node {
 
         final Node l;
@@ -355,7 +395,6 @@ public class AST {
         }
     }
 
-    // Operatore divisione
     public static class DivNode extends Node {
 
         final Node l;
@@ -372,7 +411,6 @@ public class AST {
         }
     }
 
-    // Operatore somma
     public static class PlusNode extends Node {
 
         final Node l;
@@ -389,7 +427,6 @@ public class AST {
         }
     }
 
-    // Operatore sottrazione
     public static class MinusNode extends Node {
 
         final Node l;
@@ -409,14 +446,16 @@ public class AST {
     // Chiamata a funzione
     public static class CallNode extends Node {
 
+        // Nome della funzione chiamata
         final String id;
+
+        // Argomenti passati alla funzione
         final List<Node> argList;
 
-        // Entry risolta dalla symbol table visit
+        // Entry della funzione nella Symbol Table
         STentry entry;
 
-        // Nesting level del punto in cui avviene la chiamata
-        // Serve per calcolare quanti access link risalire
+        // Nesting level del punto di chiamata
         int nl;
 
         CallNode(String id, List<Node> arguments) {
@@ -430,24 +469,21 @@ public class AST {
         }
     }
 
-    // Chiamata a metodo: obj.meth(...)
+    // Chiamata a metodo obj.meth(...)
     public static class ClassCallNode extends Node {
 
-        // Identificatore della variabile oggetto
+        // Variabile che contiene l'oggetto
         final String objId;
 
-        // Nome del metodo chiamato
+        // Metodo invocato sull'oggetto
         final String methId;
 
-        // Nesting level del punto di chiamata
         int nl;
 
         // Entry della variabile oggetto
         STentry entry;
 
-        // Entry del metodo risolto nella classe dell'oggetto
-        // È distinta da entry perché una cosa è trovare l'oggetto,
-        // un'altra è trovare il metodo nella gerarchia di classi
+        // Entry del metodo nella virtual table
         STentry methodEntry;
 
         final List<Node> argList;
@@ -467,9 +503,10 @@ public class AST {
     // Uso di identificatore
     public static class IdNode extends Node {
 
+        // Nome dell'identificatore
         final String id;
 
-        // Entry risolta dalla symbol table visit
+        // Entry della dichiarazione nella Symbol Table
         STentry entry;
 
         // Nesting level del punto di utilizzo
@@ -501,17 +538,16 @@ public class AST {
         }
     }
 
-    // Creazione oggetto: new Class(...)
+    // Creazione oggetto new Class(...)
     public static class NewNode extends Node {
 
-        // Entry della classe istanziata
+        // Entry della classe nella Symbol Table
         STentry entry;
 
         // Nome della classe da istanziare
         final String id;
 
-        // Argomenti usati per inizializzare i campi
-        // L'ordine deve combaciare con l'ordine dei campi nel layout dell'oggetto
+        // Argomenti usati per inizializzare i campi dell'oggetto
         List<Node> argList;
 
         NewNode(String id, List<Node> arguments) {
@@ -525,9 +561,9 @@ public class AST {
         }
     }
 
-    // Costante booleana
     public static class BoolNode extends Node {
 
+        // Valore booleano della costante
         final Boolean val;
 
         BoolNode(boolean val) {
@@ -540,9 +576,9 @@ public class AST {
         }
     }
 
-    // Costante intera
     public static class IntNode extends Node {
 
+        // Valore intero della costante
         final Integer val;
 
         IntNode(Integer val) {
@@ -555,10 +591,10 @@ public class AST {
         }
     }
 
-    // Tipo funzione: (parList) -> retType
+    // Tipo funzione (parList) -> retType
     public static class ArrowTypeNode extends TypeNode {
 
-        // Tipi dei parametri formali in ordine
+        // Tipi dei parametri
         final List<TypeNode> parList;
 
         // Tipo di ritorno
@@ -575,7 +611,6 @@ public class AST {
         }
     }
 
-    // Tipo booleano
     public static class BoolTypeNode extends TypeNode {
 
         @Override
@@ -584,7 +619,6 @@ public class AST {
         }
     }
 
-    // Tipo intero
     public static class IntTypeNode extends TypeNode {
 
         @Override
@@ -596,12 +630,12 @@ public class AST {
     // Tipo completo di classe
     public static class ClassTypeNode extends TypeNode {
 
-        // Lista completa dei campi, compresi quelli ereditati
-        // La posizione nella lista coincide con il layout usato dagli offset
+        // Tipi di tutti i campi della classe
+        // inclusi quelli ereditati
         final List<TypeNode> allFields;
 
-        // Lista completa dei metodi, compresi quelli ereditati
-        // La posizione nella lista coincide con la dispatch table
+        // Tipi funzionali di tutti i metodi
+        // inclusi quelli ereditati
         final List<ArrowTypeNode> allMethods;
 
         ClassTypeNode(List<TypeNode> allFields, List<ArrowTypeNode> allMethods) {
@@ -615,7 +649,7 @@ public class AST {
         }
     }
 
-    // Nodo vuoto, usato per rappresentare null nell'AST OO
+    // Nodo vuoto usato per rappresentare null
     public static class EmptyNode extends Node {
 
         @Override
@@ -624,8 +658,7 @@ public class AST {
         }
     }
 
-    // Tipo vuoto associato a EmptyNode
-    // Serve per gestire null nel type checking
+    // Tipo associato a null
     public static class EmptyTypeNode extends TypeNode {
 
         @Override

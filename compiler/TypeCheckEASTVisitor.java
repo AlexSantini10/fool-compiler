@@ -21,6 +21,10 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return t;
     }
 
+    /**
+     * Gestisce il controllo dei tipi per i programmi con dichiarazioni (LET-IN).
+     * Analizza la lista delle dichiarazioni e restituisce il tipo dell'espressione finale nel corpo dell'IN.
+     */
     @Override
     public TypeNode visitNode(ProgLetInNode n) throws TypeException {
         if (print) printNode(n);
@@ -35,12 +39,20 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return visit(n.exp);
     }
 
+    /**
+     * Gestisce il controllo dei tipi per un programma composto da una singola espressione.
+     */
     @Override
     public TypeNode visitNode(ProgNode n) throws TypeException {
         if (print) printNode(n);
         return visit(n.exp);
     }
 
+    /**
+     * Controlla la validità dei tipi all'interno di una funzione.
+     * Verifica le dichiarazioni locali e accerta che il tipo dell'espressione di ritorno
+     * sia compatibile con il tipo di ritorno dichiarato (retType).
+     */
     @Override
     public TypeNode visitNode(FunNode n) throws TypeException {
         if (print) printNode(n, n.id);
@@ -58,6 +70,10 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return null;
     }
 
+    /**
+     * Controlla la coerenza tra il tipo dichiarato di una variabile e il tipo
+     * dell'espressione assegnata ad essa (verifica di assegnamento).
+     */
     @Override
     public TypeNode visitNode(VarNode n) throws TypeException {
         if (print) printNode(n, n.id);
@@ -67,12 +83,20 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return null;
     }
 
+    /**
+     * Restituisce il tipo dell'espressione che deve essere stampata a video.
+     */
     @Override
     public TypeNode visitNode(PrintNode n) throws TypeException {
         if (print) printNode(n);
         return visit(n.exp);
     }
 
+    /**
+     * Gestisce il controllo dei tipi dell'istruzione IF.
+     * Verifica che la condizione sia booleana e calcola il "Lowest Common Ancestor" (LCA)
+     * tra i tipi del ramo 'then' e del ramo 'else' per determinare il tipo risultante.
+     */
     @Override
     public TypeNode visitNode(IfNode n) throws TypeException {
         if (print) printNode(n);
@@ -88,6 +112,10 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return lca;
     }
 
+    /**
+     * Verifica che i due operandi di un'uguaglianza siano confrontabili tra loro
+     * (uno deve essere sottotipo dell'altro) e restituisce sempre un tipo Booleano.
+     */
     @Override
     public TypeNode visitNode(EqualNode n) throws TypeException {
         if (print) printNode(n);
@@ -99,6 +127,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new BoolTypeNode();
     }
 
+    /**
+     * Verifica la confrontabilità (>=) tra tipi compatibili e restituisce un Booleano.
+     */
     @Override
     public TypeNode visitNode(GreaterEqualNode n) throws TypeException {
         if (print) printNode(n);
@@ -110,6 +141,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new BoolTypeNode();
     }
 
+    /**
+     * Verifica la confrontabilità (<=) tra tipi compatibili e restituisce un Booleano.
+     */
     @Override
     public TypeNode visitNode(LessEqualNode n) throws TypeException {
         if (print) printNode(n);
@@ -121,6 +155,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new BoolTypeNode();
     }
 
+    /**
+     * Verifica che gli operandi dell'operatore logico AND siano booleani.
+     */
     @Override
     public TypeNode visitNode(AndNode n) throws TypeException {
         if (print) printNode(n);
@@ -132,6 +169,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new BoolTypeNode();
     }
 
+    /**
+     * Verifica che gli operandi dell'operatore logico OR siano booleani.
+     */
     @Override
     public TypeNode visitNode(OrNode n) throws TypeException {
         if (print) printNode(n);
@@ -143,6 +183,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new BoolTypeNode();
     }
 
+    /**
+     * Verifica che l'operando della negazione logica NOT sia booleano.
+     */
     @Override
     public TypeNode visitNode(NotNode n) throws TypeException {
         if (print) printNode(n);
@@ -152,6 +195,10 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new BoolTypeNode();
     }
 
+
+    /**
+     * Verifica che entrambi gli operandi di una moltiplicazione siano interi.
+     */
     @Override
     public TypeNode visitNode(TimesNode n) throws TypeException {
         if (print) printNode(n);
@@ -161,6 +208,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new IntTypeNode();
     }
 
+    /**
+     * Verifica che entrambi gli operandi di una divisione siano interi.
+     */
     @Override
     public TypeNode visitNode(DivNode n) throws TypeException {
         if (print) printNode(n);
@@ -170,6 +220,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new IntTypeNode();
     }
 
+    /**
+     * Verifica che entrambi gli operandi di una somma siano interi.
+     */
     @Override
     public TypeNode visitNode(PlusNode n) throws TypeException {
         if (print) printNode(n);
@@ -179,6 +232,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new IntTypeNode();
     }
 
+    /**
+     * Verifica che entrambi gli operandi di una sottrazione siano interi.
+     */
     @Override
     public TypeNode visitNode(MinusNode n) throws TypeException {
         if (print) printNode(n);
@@ -188,9 +244,18 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new IntTypeNode();
     }
 
+    /**
+     * Controlla la validità di una chiamata di funzione.
+     * Verifica che l'identificatore sia effettivamente una funzione, che il numero di argomenti
+     * sia corretto e che ogni argomento sia compatibile con il tipo del parametro formale.
+     */
     @Override
     public TypeNode visitNode(CallNode n) throws TypeException {
         if (print) printNode(n, n.id);
+
+        if (n.entry == null) {
+            throw new IncomplException();
+        }
 
         TypeNode t = visit(n.entry);
         if (!(t instanceof ArrowTypeNode)) {
@@ -215,9 +280,17 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return at.retType;
     }
 
+    /**
+     * Controlla la validità di una chiamata a un metodo di classe.
+     * Simile a CallNode, ma opera nel contesto dell'invocazione di metodi su oggetti.
+     */
     @Override
     public TypeNode visitNode(ClassCallNode n) throws TypeException {
         if (print) printNode(n, n.objId + "." + n.methId);
+
+        if (n.entry == null || n.methodEntry == null) {
+            throw new IncomplException();
+        }
 
         TypeNode mt = visit(n.methodEntry);
         if (!(mt instanceof ArrowTypeNode)) {
@@ -242,9 +315,18 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return at.retType;
     }
 
+    /**
+     * Recupera il tipo associato a un identificatore.
+     * Impedisce l'uso improprio di nomi di funzioni o classi come se fossero variabili semplici.
+     */
     @Override
     public TypeNode visitNode(IdNode n) throws TypeException {
         if (print) printNode(n, n.id);
+
+        if (n.entry == null) {
+            throw new IncomplException();
+        }
+
         TypeNode t = visit(n.entry);
 
         if (t instanceof ArrowTypeNode) {
@@ -256,9 +338,18 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return t;
     }
 
+    /**
+     * Gestisce l'istanziamento di una nuova classe (NEW).
+     * Verifica che l'ID corrisponda a una classe, che il numero di argomenti passati al
+     * costruttore coincida con i campi della classe e che i tipi siano compatibili.
+     */
     @Override
     public TypeNode visitNode(NewNode n) throws TypeException {
         if (print) printNode(n, n.id);
+
+        if (n.entry == null) {
+            throw new IncomplException();
+        }
 
         if (!(n.entry.type instanceof ClassTypeNode)) {
             throw new TypeException("Invocation of new on a non-class " + n.id, n.getLine());
@@ -282,6 +373,11 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return new RefTypeNode(n.id);
     }
 
+    /**
+     * Esegue il controllo dei tipi per una dichiarazione di Classe.
+     * In caso di ereditarietà, controlla il "Subtyping di tipo Safe": verifica che i campi
+     * e i metodi sovrascritti (overriding) siano compatibili con quelli della superclasse.
+     */
     @Override
     public TypeNode visitNode(ClassNode n) throws TypeException {
         if (print) printNode(n, n.id);
@@ -291,6 +387,10 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         }
 
         if (n.superID != null) {
+            if (n.superEntry == null) {
+                throw new IncomplException();
+            }
+
             superType.put(n.id, n.superID);
 
             ClassTypeNode classType = n.type;
@@ -316,6 +416,10 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return null;
     }
 
+    /**
+     * Controlla il corpo di un metodo di una classe.
+     * Simile a FunNode, verifica la compatibilità tra l'espressione restituita e il tipo dichiarato.
+     */
     @Override
     public TypeNode visitNode(MethodNode n) throws TypeException {
         if (print) printNode(n, n.id);
@@ -336,24 +440,36 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return null;
     }
 
+    /**
+     * Ritorna il tipo base Booleano per un nodo foglia costante booleana.
+     */
     @Override
     public TypeNode visitNode(BoolNode n) {
         if (print) printNode(n, n.val.toString());
         return new BoolTypeNode();
     }
 
+    /**
+     * Ritorna il tipo base Intero per un nodo foglia costante intera.
+     */
     @Override
     public TypeNode visitNode(IntNode n) {
         if (print) printNode(n, n.val.toString());
         return new IntTypeNode();
     }
 
+    /**
+     * Ritorna il tipo Empty (null/void) per un nodo vuoto.
+     */
     @Override
     public TypeNode visitNode(EmptyNode n) {
         if (print) printNode(n);
         return new EmptyTypeNode();
     }
 
+    /**
+     * Visita la definizione di un tipo funzione (arrow type), analizzando i parametri e il ritorno.
+     */
     @Override
     public TypeNode visitNode(ArrowTypeNode n) throws TypeException {
         if (print) printNode(n);
@@ -364,6 +480,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return null;
     }
 
+    /**
+     * Metodi di supporto che restituiscono il tipo atomico o i riferimenti a classi.
+     */
     @Override
     public TypeNode visitNode(BoolTypeNode n) {
         if (print) printNode(n);
@@ -382,6 +501,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return n;
     }
 
+    /**
+     * Analizza la struttura di un tipo classe (campi e metodi).
+     */
     @Override
     public TypeNode visitNode(ClassTypeNode n) throws TypeException {
         if (print) printNode(n);
@@ -390,6 +512,9 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         return null;
     }
 
+    /**
+     * Ottiene il tipo presente nella Symbol Table associato alla entry
+     */
     @Override
     public TypeNode visitSTentry(STentry entry) throws TypeException {
         if (print) printSTentry("type");

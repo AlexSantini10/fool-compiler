@@ -9,5 +9,3 @@ public abstract class Node implements Visitable {
 	public int getLine() { return line; }
 
 }
-
-	  
