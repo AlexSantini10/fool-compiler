@@ -135,7 +135,7 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         if (print) printNode(n);
         TypeNode l = visit(n.l);
         TypeNode r = visit(n.r);
-        if (!(isSubtype(l, r) || isSubtype(r, l))) {
+        if (!(isSubtype(l,new IntTypeNode()) || isSubtype(r, new IntTypeNode()))) {
             throw new TypeException("Incompatible types in greater equal", n.getLine());
         }
         return new BoolTypeNode();
@@ -149,7 +149,7 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         if (print) printNode(n);
         TypeNode l = visit(n.l);
         TypeNode r = visit(n.r);
-        if (!(isSubtype(l, r) || isSubtype(r, l))) {
+        if (!(isSubtype(l, new IntTypeNode()) || isSubtype(r, new IntTypeNode()))) {
             throw new TypeException("Incompatible types in less equal", n.getLine());
         }
         return new BoolTypeNode();
@@ -163,7 +163,7 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         if (print) printNode(n);
         TypeNode l = visit(n.l);
         TypeNode r = visit(n.r);
-        if (!(isSubtype(l, r) || isSubtype(r, l))) {
+        if (!(isSubtype(l, new BoolTypeNode()) || isSubtype(r, new BoolTypeNode()))) {
             throw new TypeException("Incompatible types in AND", n.getLine());
         }
         return new BoolTypeNode();
@@ -177,7 +177,7 @@ public class TypeCheckEASTVisitor extends BaseEASTVisitor<TypeNode, TypeExceptio
         if (print) printNode(n);
         TypeNode l = visit(n.l);
         TypeNode r = visit(n.r);
-        if (!(isSubtype(l, r) || isSubtype(r, l))) {
+        if (!(isSubtype(l, new BoolTypeNode()) || isSubtype(r, new BoolTypeNode()))) {
             throw new TypeException("Incompatible types in OR", n.getLine());
         }
         return new BoolTypeNode();
